@@ -1,0 +1,10 @@
+# Secrets : ne jamais versionner
+.env
+
+# État local du script (identifiant du dernier ticket notifié)
+state.json
+
+# Environnements Python
+.venv/
+__pycache__/
+*.pyc
