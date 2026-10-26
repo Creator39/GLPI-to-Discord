@@ -1,0 +1,20 @@
+# Ne jamais envoyer les secrets ni les fichiers locaux dans le contexte de build
+.env
+.env.*
+!.env.example
+
+# État local et caches
+state.json
+.git
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Tests : non nécessaires à l'exécution
+tests/
+
+# Documentation et éditeurs
+README.md
+.vscode/
+.idea/
