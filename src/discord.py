@@ -67,6 +67,7 @@ def formater_message(payload: dict, url_glpi: str | None = None) -> dict | None:
         {"name": "Urgence", "value": NIVEAUX.get(item.get("urgency"), "Inconnue"), "inline": True},
         {"name": "Priorité", "value": NIVEAUX.get(item.get("priority"), "Inconnue"), "inline": True},
         {"name": "Entité", "value": _sous_champ(item, "entity", "completename", "—"), "inline": True},
+        {"name": "Catégorie", "value": _sous_champ(item, "category", "name", "Aucune"), "inline": True},
         {"name": "Créé le", "value": date_lisible, "inline": True},
     ]
 

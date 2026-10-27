@@ -117,6 +117,20 @@ def test_date_absente_donne_un_tiret():
     assert champs["Créé le"] == "—"
 
 
+def test_categorie_affichee_si_renseignee():
+    donnees = payload_modifie(item__category={"id": 3, "name": "Réseau"})
+
+    champs = champs_par_nom(formater_message(donnees, URL_GLPI))
+
+    assert champs["Catégorie"] == "Réseau"
+
+
+def test_categorie_absente_affiche_aucune():
+    champs = champs_par_nom(formater_message(PAYLOAD, URL_GLPI))
+
+    assert champs["Catégorie"] == "Aucune"
+
+
 def test_urgence_et_priorite_sont_traduites():
     champs = champs_par_nom(formater_message(PAYLOAD, URL_GLPI))
 
