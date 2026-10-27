@@ -22,7 +22,11 @@ NIVEAUX = {1: "Très basse", 2: "Basse", 3: "Moyenne", 4: "Haute", 5: "Très hau
 def html_vers_texte(contenu: str | None) -> str:
     texte = re.sub(r"<[^>]+>", " ", contenu or "")
     texte = html.unescape(texte)
-    return " ".join(texte.split())
+    # Les réponses de formulaire sont enregistrées sur une seule ligne : "1) ... 2) ..."
+    # Un saut de ligne est inséré avant chaque rubrique numérotée (1) à 99))
+    texte = re.sub(r"\s+(?=\d{1,2}\)\s)", "\n", texte)
+    lignes = (" ".join(ligne.split()) for ligne in texte.split("\n"))
+    return "\n".join(ligne for ligne in lignes if ligne)
 
 
 def formater_date(date_brute: str | None) -> str:

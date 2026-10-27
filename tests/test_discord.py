@@ -117,6 +117,28 @@ def test_date_absente_donne_un_tiret():
     assert champs["Créé le"] == "—"
 
 
+def test_rubriques_du_formulaire_sur_des_lignes_separees():
+    donnees = payload_modifie(
+        item__content="<p>1) Titre : test 2) Description : test 3) Pièce jointe : photo.jpeg</p>"
+    )
+
+    description = premier_embed(formater_message(donnees, URL_GLPI))["description"]
+
+    assert description.split("\n") == [
+        "1) Titre : test",
+        "2) Description : test",
+        "3) Pièce jointe : photo.jpeg",
+    ]
+
+
+def test_texte_sans_rubriques_garde_ses_retours_et_reduit_les_espaces():
+    donnees = payload_modifie(item__content="<p>Panne   réseau\n au bureau</p>")
+
+    description = premier_embed(formater_message(donnees, URL_GLPI))["description"]
+
+    assert description == "Panne réseau\nau bureau"
+
+
 def test_categorie_affichee_si_renseignee():
     donnees = payload_modifie(item__category={"id": 3, "name": "Réseau"})
 
