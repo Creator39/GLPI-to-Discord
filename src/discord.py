@@ -80,8 +80,8 @@ def formater_message(payload: dict, url_glpi: str | None = None) -> dict | None:
 
     titre = f"Nouveau ticket #{ticket_id} : {item.get('name') or 'sans titre'}"
     corps = html_vers_texte(item.get("content")) or "(pas de description)"
-    # La catégorie est la première ligne de la description : elle s'affiche juste sous le titre
-    description = f"{libelle_categorie(item)}\n{corps}"
+    # La catégorie est la première ligne de la description : elle s'affiche juste sous le titre, en titre markdown (## = plus grand)
+    description = f"## {libelle_categorie(item)}\n{corps}"
 
     champs = [
         {"name": "Demandeur", "value": _sous_champ(item, "user_recipient", "name", "—"), "inline": True},

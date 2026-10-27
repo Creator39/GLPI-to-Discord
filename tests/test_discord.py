@@ -66,7 +66,8 @@ def champs_par_nom(message):
 
 
 def ligne_categorie(message):
-    return premier_embed(message)["description"].split("\n")[0]
+    # Première ligne de la description, sans le prÃ©fixe de titre markdown
+    return premier_embed(message)["description"].split("\n")[0].removeprefix("## ")
 
 
 def corps_description(message):
@@ -98,6 +99,12 @@ def test_categorie_juste_sous_le_titre():
     message = formater_message(payload_modifie(item__category={"id": 1, "name": "IT"}), URL_GLPI)
 
     assert ligne_categorie(message) == "💻 IT"
+
+
+def test_categorie_en_titre_markdown_pour_une_taille_plus_grande():
+    description = premier_embed(formater_message(PAYLOAD, URL_GLPI))["description"]
+
+    assert description.split("\n")[0].startswith("## ")
 
 
 def test_description_convertit_le_html_en_texte():
