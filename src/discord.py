@@ -1,0 +1,87 @@
+"""Transformation du webhook GLPI en message Discord (embed).
+
+Spécification : voir tests/test_discord.py.
+Cette fonction ne fait aucun appel réseau : l'envoi est une étape séparée.
+"""
+
+import html
+import re
+from datetime import datetime, timedelta, timezone
+
+EVENEMENT_NOTIFIE = "new"
+LONGUEUR_MAX_TITRE = 256
+LONGUEUR_MAX_DESCRIPTION = 4096
+LONGUEUR_MAX_VALEUR_CHAMP = 1024
+COULEUR_EMBED = 0x2F80ED  # bleu
+# Madagascar : UTC+3 toute l'année, sans heure d'été
+FUSEAU_MADAGASCAR = timezone(timedelta(hours=3))
+
+NIVEAUX = {1: "Très basse", 2: "Basse", 3: "Moyenne", 4: "Haute", 5: "Très haute"}
+
+
+def html_vers_texte(contenu: str | None) -> str:
+    texte = re.sub(r"<[^>]+>", " ", contenu or "")
+    texte = html.unescape(texte)
+    return " ".join(texte.split())
+
+
+def formater_date(date_brute: str | None) -> str:
+    if not date_brute:
+        return "—"
+    try:
+        date = datetime.fromisoformat(date_brute)
+    except ValueError:
+        return "—"
+    if date.tzinfo is None:
+        date = date.replace(tzinfo=timezone.utc)
+    locale = date.astimezone(FUSEAU_MADAGASCAR)
+    return locale.strftime("%Y-%m-%d %H:%M") + " (Madagascar)"
+
+
+def _tronquer(texte: str, longueur: int) -> str:
+    if len(texte) <= longueur:
+        return texte
+    return texte[: longueur - 1] + "…"
+
+
+def _sous_champ(item: dict, cle: str, sous_cle: str, defaut: str) -> str:
+    objet = item.get(cle) or {}
+    return objet.get(sous_cle) or defaut
+
+
+def formater_message(payload: dict, url_glpi: str | None = None) -> dict | None:
+    if payload.get("event") != EVENEMENT_NOTIFIE:
+        return None
+
+    item = payload["item"]
+    ticket_id = item["id"]
+
+    titre = f"Nouveau ticket #{ticket_id} : {item.get('name') or 'sans titre'}"
+    description = html_vers_texte(item.get("content")) or "(pas de description)"
+
+    date_lisible = formater_date(item.get("date_creation"))
+
+    champs = [
+        {"name": "Demandeur", "value": _sous_champ(item, "user_recipient", "name", "—"), "inline": True},
+        {"name": "Statut", "value": _sous_champ(item, "status", "name", "Inconnu"), "inline": True},
+        {"name": "Urgence", "value": NIVEAUX.get(item.get("urgency"), "Inconnue"), "inline": True},
+        {"name": "Priorité", "value": NIVEAUX.get(item.get("priority"), "Inconnue"), "inline": True},
+        {"name": "Entité", "value": _sous_champ(item, "entity", "completename", "—"), "inline": True},
+        {"name": "Créé le", "value": date_lisible, "inline": True},
+    ]
+
+    if url_glpi:
+        lien = f"{url_glpi.rstrip('/')}/front/ticket.form.php?id={ticket_id}"
+        champs.append({"name": "Lien", "value": lien, "inline": False})
+
+    for champ in champs:
+        champ["value"] = _tronquer(str(champ["value"]), LONGUEUR_MAX_VALEUR_CHAMP)
+
+    embed = {
+        "title": _tronquer(titre, LONGUEUR_MAX_TITRE),
+        "description": _tronquer(description, LONGUEUR_MAX_DESCRIPTION),
+        "color": COULEUR_EMBED,
+        "fields": champs,
+    }
+
+    return {"embeds": [embed]}

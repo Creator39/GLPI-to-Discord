@@ -100,6 +100,22 @@ def test_message_derreur_ne_contient_pas_le_secret(monkeypatch):
     assert "s3cr3t-tres-sensible" not in str(erreur.value)
 
 
+def test_variables_glpi_absentes_leve_authError_sans_requete(monkeypatch):
+    appels = []
+
+    def faux_post(url, **kwargs):
+        appels.append(url)
+        return FauxReponse(200, {"access_token": "jeton"})
+
+    monkeypatch.setattr(requests, "post", faux_post)
+    config_vide = Config(discord_webhook_url="https://discord.com/api/webhooks/1/xyz")
+
+    with pytest.raises(AuthError):
+        obtenir_jeton(config_vide)
+
+    assert appels == []
+
+
 def test_reponse_200_sans_access_token_leve_authError(monkeypatch):
     def faux_post(url, **kwargs):
         return FauxReponse(200, {"expires_in": 3600})

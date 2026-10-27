@@ -16,6 +16,10 @@ class AuthError(Exception):
 
 
 def obtenir_jeton(config: Config) -> str:
+    if not (config.glpi_base_url and config.glpi_client_id and config.glpi_client_secret):
+        # Sans ces trois valeurs, aucune requête n'est tentée
+        raise AuthError("Variables GLPI_* absentes : authentification impossible")
+
     url = f"{config.glpi_base_url}/api.php/v2/token"
     donnees = {
         "grant_type": "client_credentials",
