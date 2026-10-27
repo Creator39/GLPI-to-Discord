@@ -79,9 +79,9 @@ def formater_message(payload: dict, url_glpi: str | None = None) -> dict | None:
     ticket_id = item["id"]
 
     titre = f"Nouveau ticket #{ticket_id} : {item.get('name') or 'sans titre'}"
-    description = html_vers_texte(item.get("content")) or "(pas de description)"
-
-    date_lisible = formater_date(item.get("date_creation"))
+    corps = html_vers_texte(item.get("content")) or "(pas de description)"
+    # La catégorie est la première ligne de la description : elle s'affiche juste sous le titre
+    description = f"{libelle_categorie(item)}\n{corps}"
 
     champs = [
         {"name": "Demandeur", "value": _sous_champ(item, "user_recipient", "name", "—"), "inline": True},
@@ -89,8 +89,7 @@ def formater_message(payload: dict, url_glpi: str | None = None) -> dict | None:
         {"name": "Urgence", "value": NIVEAUX.get(item.get("urgency"), "Inconnue"), "inline": True},
         {"name": "Priorité", "value": NIVEAUX.get(item.get("priority"), "Inconnue"), "inline": True},
         {"name": "Entité", "value": _sous_champ(item, "entity", "completename", "—"), "inline": True},
-        {"name": "Catégorie", "value": libelle_categorie(item), "inline": True},
-        {"name": "Créé le", "value": date_lisible, "inline": True},
+        {"name": "Créé le", "value": formater_date(item.get("date_creation")), "inline": True},
     ]
 
     if url_glpi:

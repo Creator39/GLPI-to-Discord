@@ -1,11 +1,11 @@
-"""Tests de src/discord.py : transformation du webhook GLPI en message Discord.
+"""Tests de src/discord.py : transformation du webhook GLPI en message Discord (embed).
 
 Spécification :
 - formater_message(payload, url_glpi) ne traite que event == "new" ; sinon renvoie None.
 - Renvoie un corps Discord : {"embeds": [ {...} ]}.
 - Titre : "Nouveau ticket #<id> : <nom>", tronqué à 256 caractères.
-- Description : contenu HTML converti en texte brut, tronqué à 4096 caractères.
-- Champs : demandeur, statut, urgence et priorité (libellés 1 à 5), entité, date (heure de Madagascar, UTC+3).
+- Description : première ligne = catégorie (avec emoji), puis le contenu converti en texte.
+- Champs : demandeur, statut, urgence, priorité (libellés 1 à 5), entité, date (heure de Madagascar).
 - Lien vers le ticket seulement si url_glpi est fourni.
 - Les noms des intervenants (realname, firstname) n'apparaissent jamais.
 - Les champs null ou absents ne font pas planter la fonction.
@@ -65,6 +65,15 @@ def champs_par_nom(message):
     return {champ["name"]: champ["value"] for champ in premier_embed(message)["fields"]}
 
 
+def ligne_categorie(message):
+    return premier_embed(message)["description"].split("\n")[0]
+
+
+def corps_description(message):
+    # Description sans sa première ligne (la catégorie)
+    return "\n".join(premier_embed(message)["description"].split("\n")[1:])
+
+
 def test_evenement_new_produit_un_embed():
     message = formater_message(PAYLOAD, URL_GLPI)
 
@@ -84,12 +93,19 @@ def test_titre_contient_id_et_nom():
     assert embed["title"] == "Nouveau ticket #108 : test 3 discord"
 
 
-def test_description_convertit_le_html_en_texte():
-    embed = premier_embed(formater_message(PAYLOAD, URL_GLPI))
+def test_categorie_juste_sous_le_titre():
+    # La catégorie est la première ligne de la description, donc directement sous le titre
+    message = formater_message(payload_modifie(item__category={"id": 1, "name": "IT"}), URL_GLPI)
 
-    assert "test" in embed["description"]
-    assert "<" not in embed["description"]
-    assert ">" not in embed["description"]
+    assert ligne_categorie(message) == "💻 IT"
+
+
+def test_description_convertit_le_html_en_texte():
+    description = corps_description(formater_message(PAYLOAD, URL_GLPI))
+
+    assert "test" in description
+    assert "<" not in description
+    assert ">" not in description
 
 
 def test_champs_statut_demandeur_entite_et_date():
@@ -122,7 +138,7 @@ def test_rubriques_du_formulaire_sur_des_lignes_separees():
         item__content="<p>1) Titre : test 2) Description : test 3) Pièce jointe : photo.jpeg</p>"
     )
 
-    description = premier_embed(formater_message(donnees, URL_GLPI))["description"]
+    description = corps_description(formater_message(donnees, URL_GLPI))
 
     assert description.split("\n") == [
         "1) Titre : test",
@@ -134,7 +150,7 @@ def test_rubriques_du_formulaire_sur_des_lignes_separees():
 def test_texte_sans_rubriques_garde_ses_retours_et_reduit_les_espaces():
     donnees = payload_modifie(item__content="<p>Panne   réseau\n au bureau</p>")
 
-    description = premier_embed(formater_message(donnees, URL_GLPI))["description"]
+    description = corps_description(formater_message(donnees, URL_GLPI))
 
     assert description == "Panne réseau\nau bureau"
 
@@ -142,39 +158,29 @@ def test_texte_sans_rubriques_garde_ses_retours_et_reduit_les_espaces():
 def test_categorie_affichee_si_renseignee():
     donnees = payload_modifie(item__category={"id": 3, "name": "Réseau"})
 
-    champs = champs_par_nom(formater_message(donnees, URL_GLPI))
-
-    assert champs["Catégorie"] == "📌 Réseau"
+    assert ligne_categorie(formater_message(donnees, URL_GLPI)) == "📌 Réseau"
 
 
 def test_emoji_selon_la_categorie():
     donnees = payload_modifie(item__category={"id": 1, "name": "IT"})
 
-    champs = champs_par_nom(formater_message(donnees, URL_GLPI))
-
-    assert champs["Catégorie"] == "💻 IT"
+    assert ligne_categorie(formater_message(donnees, URL_GLPI)) == "💻 IT"
 
 
 def test_emoji_pedagogie():
     donnees = payload_modifie(item__category={"id": 2, "name": "Pédagogie"})
 
-    champs = champs_par_nom(formater_message(donnees, URL_GLPI))
-
-    assert champs["Catégorie"] == "🎓 Pédagogie"
+    assert ligne_categorie(formater_message(donnees, URL_GLPI)) == "🎓 Pédagogie"
 
 
 def test_emoji_direction():
     donnees = payload_modifie(item__category={"id": 6, "name": "Direction"})
 
-    champs = champs_par_nom(formater_message(donnees, URL_GLPI))
-
-    assert champs["Catégorie"] == "👔 Direction"
+    assert ligne_categorie(formater_message(donnees, URL_GLPI)) == "👔 Direction"
 
 
 def test_categorie_absente_affiche_aucune():
-    champs = champs_par_nom(formater_message(PAYLOAD, URL_GLPI))
-
-    assert champs["Catégorie"] == "Aucune"
+    assert ligne_categorie(formater_message(PAYLOAD, URL_GLPI)) == "Aucune"
 
 
 def test_urgence_et_priorite_sont_traduites():
@@ -225,5 +231,5 @@ def test_champs_null_ou_absents_ne_plantent_pas():
 
     message = formater_message(donnees, URL_GLPI)
 
-    assert premier_embed(message)["description"] == "(pas de description)"
+    assert corps_description(message) == "(pas de description)"
     assert champs_par_nom(message)["Demandeur"] == "—"
