@@ -18,6 +18,17 @@ FUSEAU_MADAGASCAR = timezone(timedelta(hours=3))
 
 NIVEAUX = {1: "Très basse", 2: "Basse", 3: "Moyenne", 4: "Haute", 5: "Très haute"}
 
+# Emoji par catégorie GLPI ; les catégories inconnues reçoivent EMOJI_CATEGORIE_PAR_DEFAUT
+EMOJIS_CATEGORIES = {
+    "IT": "💻",
+    "Pédagogie": "🎓",
+    "Employabilité": "💼",
+    "Communication": "📣",
+    "Office Management": "🏢",
+    "Direction": "👔",
+}
+EMOJI_CATEGORIE_PAR_DEFAUT = "📌"
+
 
 def html_vers_texte(contenu: str | None) -> str:
     texte = re.sub(r"<[^>]+>", " ", contenu or "")
@@ -53,6 +64,13 @@ def _sous_champ(item: dict, cle: str, sous_cle: str, defaut: str) -> str:
     return objet.get(sous_cle) or defaut
 
 
+def libelle_categorie(item: dict) -> str:
+    nom = _sous_champ(item, "category", "name", "")
+    if not nom:
+        return "Aucune"
+    return f"{EMOJIS_CATEGORIES.get(nom, EMOJI_CATEGORIE_PAR_DEFAUT)} {nom}"
+
+
 def formater_message(payload: dict, url_glpi: str | None = None) -> dict | None:
     if payload.get("event") != EVENEMENT_NOTIFIE:
         return None
@@ -71,7 +89,7 @@ def formater_message(payload: dict, url_glpi: str | None = None) -> dict | None:
         {"name": "Urgence", "value": NIVEAUX.get(item.get("urgency"), "Inconnue"), "inline": True},
         {"name": "Priorité", "value": NIVEAUX.get(item.get("priority"), "Inconnue"), "inline": True},
         {"name": "Entité", "value": _sous_champ(item, "entity", "completename", "—"), "inline": True},
-        {"name": "Catégorie", "value": _sous_champ(item, "category", "name", "Aucune"), "inline": True},
+        {"name": "Catégorie", "value": libelle_categorie(item), "inline": True},
         {"name": "Créé le", "value": date_lisible, "inline": True},
     ]
 

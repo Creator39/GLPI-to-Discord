@@ -144,7 +144,31 @@ def test_categorie_affichee_si_renseignee():
 
     champs = champs_par_nom(formater_message(donnees, URL_GLPI))
 
-    assert champs["Catégorie"] == "Réseau"
+    assert champs["Catégorie"] == "📌 Réseau"
+
+
+def test_emoji_selon_la_categorie():
+    donnees = payload_modifie(item__category={"id": 1, "name": "IT"})
+
+    champs = champs_par_nom(formater_message(donnees, URL_GLPI))
+
+    assert champs["Catégorie"] == "💻 IT"
+
+
+def test_emoji_pedagogie():
+    donnees = payload_modifie(item__category={"id": 2, "name": "Pédagogie"})
+
+    champs = champs_par_nom(formater_message(donnees, URL_GLPI))
+
+    assert champs["Catégorie"] == "🎓 Pédagogie"
+
+
+def test_emoji_direction():
+    donnees = payload_modifie(item__category={"id": 6, "name": "Direction"})
+
+    champs = champs_par_nom(formater_message(donnees, URL_GLPI))
+
+    assert champs["Catégorie"] == "👔 Direction"
 
 
 def test_categorie_absente_affiche_aucune():
