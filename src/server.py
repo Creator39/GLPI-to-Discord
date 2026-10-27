@@ -45,6 +45,8 @@ def creer_serveur(secret: str, chemin: str, port: int, hote: str = "127.0.0.1") 
 if __name__ == "__main__":
     secret = os.environ["NOTIFIER_SECRET"]
     chemin = os.environ.get("NOTIFIER_CHEMIN", "/glpi-ticket")
-    serveur = creer_serveur(secret=secret, chemin=chemin, port=8000, hote="0.0.0.0")
-    print("Capture en écoute sur le port 8000", flush=True)
+    # Port 80 : GLPI refuse les URL avec port dans sa liste d'URL autorisées
+    port = int(os.environ.get("NOTIFIER_PORT", "80"))
+    serveur = creer_serveur(secret=secret, chemin=chemin, port=port, hote="0.0.0.0")
+    print(f"Capture en écoute sur le port {port}", flush=True)
     serveur.serve_forever()

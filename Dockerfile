@@ -30,6 +30,6 @@ RUN useradd --system --no-create-home notifier \
 USER notifier
 
 # Port interne uniquement : rien n'est publié vers l'hôte dans le compose
-EXPOSE 8000
+EXPOSE 80
 
 CMD ["python", "-m", "src.server"]
