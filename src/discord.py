@@ -8,7 +8,7 @@ import html
 import re
 from datetime import datetime, timedelta, timezone
 
-EVENEMENT_NOTIFIE = "new"
+EVENEMENTS_NOTIFIES = ("new", "update")
 LONGUEUR_MAX_TITRE = 256
 LONGUEUR_MAX_DESCRIPTION = 4096
 LONGUEUR_MAX_VALEUR_CHAMP = 1024
@@ -71,14 +71,27 @@ def libelle_categorie(item: dict) -> str:
     return f"{EMOJIS_CATEGORIES.get(nom, EMOJI_CATEGORIE_PAR_DEFAUT)} {nom}"
 
 
+def _modification_reelle(item: dict) -> bool:
+    # Un ticket créé par formulaire peut déclencher un "update" sans modification réelle
+    date_mod = item.get("date_mod")
+    return bool(date_mod) and date_mod != item.get("date_creation")
+
+
 def formater_message(payload: dict, url_glpi: str | None = None) -> dict | None:
-    if payload.get("event") != EVENEMENT_NOTIFIE:
+    evenement = payload.get("event")
+    if evenement not in EVENEMENTS_NOTIFIES:
         return None
 
     item = payload["item"]
+    if evenement == "update" and not _modification_reelle(item):
+        return None
+
     ticket_id = item["id"]
 
-    titre = f"Nouveau ticket #{ticket_id} : {item.get('name') or 'sans titre'}"
+    if evenement == "new":
+        titre = f"Nouveau ticket #{ticket_id} : {item.get('name') or 'sans titre'}"
+    else:
+        titre = f"Ticket mis à jour #{ticket_id} : {item.get('name') or 'sans titre'}"
     corps = html_vers_texte(item.get("content")) or "(pas de description)"
     # La catégorie est la première ligne de la description : elle s'affiche juste sous le titre, en titre markdown (## = plus grand)
     description = f"### {libelle_categorie(item)}\n{corps}"
@@ -91,6 +104,9 @@ def formater_message(payload: dict, url_glpi: str | None = None) -> dict | None:
         {"name": "Entité", "value": _sous_champ(item, "entity", "completename", "—"), "inline": True},
         {"name": "Créé le", "value": formater_date(item.get("date_creation")), "inline": True},
     ]
+
+    if evenement == "update":
+        champs.append({"name": "Mis à jour le", "value": formater_date(item.get("date_mod")), "inline": True})
 
     if url_glpi:
         lien = f"{url_glpi.rstrip('/')}/front/ticket.form.php?id={ticket_id}"
